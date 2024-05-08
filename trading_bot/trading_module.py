@@ -11,6 +11,7 @@ class TradingModule:
         try:
             response = ollama.chat(model='phi3', messages=[{'role': 'user', 'content': query}])
             trading_decisions = response['message']['content'].strip().split("\n\n")
+            print(trading_decisions)
             return self.validate_and_format_decisions(trading_decisions)
         except Exception as e:
             print(f"Error occurred while generating trading decisions: {e}")
@@ -19,6 +20,7 @@ class TradingModule:
     def validate_and_format_decisions(self, trading_decisions):
         validated_decisions = []
         for decision in trading_decisions:
+
             lines = decision.split("\n")
 
             signal = lines[0].strip()
@@ -26,7 +28,6 @@ class TradingModule:
             take_profit = lines[2].split(": ")[1].strip()
             explanation = "\n".join(lines[3:])
 
-            print(lines)
 
             trading_decision_json = {
                 "signal": signal,
