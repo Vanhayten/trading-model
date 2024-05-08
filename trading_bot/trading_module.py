@@ -20,15 +20,13 @@ class TradingModule:
         validated_decisions = []
         for decision in trading_decisions:
             lines = decision.split("\n")
-            print(lines)
-            if len(lines) < 4:
-                print("Invalid trading decision format:", decision)
-                continue
 
             signal = lines[0].strip()
             stop_loss = lines[1].split(": ")[1].strip()
             take_profit = lines[2].split(": ")[1].strip()
             explanation = "\n".join(lines[3:])
+
+            print(lines)
 
             trading_decision_json = {
                 "signal": signal,
