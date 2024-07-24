@@ -1,22 +1,13 @@
-from dataclasses import dataclass
-from typing import List, Dict, Any, Optional
-import logging
-import numpy as np
+from typing import List
 import pandas as pd
-from config import CONFIG
-from typing import List, Dict, Generator
+import logging
+from domain.entities.trading_decision import TradingDecision
+from infrastructure.external_services.llm_api_client import LLMApiClient
 
 logger = logging.getLogger(__name__)
 
-@dataclass
-class TradingDecision:
-    signal: str
-    stop_loss: float
-    take_profit: float
-    explanation: str
-
-class TradingModule:
-    def __init__(self, api_client):
+class TradingModule():
+    def __init__(self, api_client: LLMApiClient):
         self.api_client = api_client
 
     def generate_trading_decisions(self, data: pd.DataFrame) -> List[TradingDecision]:
@@ -32,7 +23,7 @@ class TradingModule:
             logger.error(f"Error occurred while generating trading decisions: {e}")
             return []
 
-    def _parse_llm_response(self, response: str) -> Dict[str, Any]:
+    def _parse_llm_response(self, response: str) -> dict:
         decision = {}
         lines = response.split('\n')
         for line in lines:
@@ -61,7 +52,7 @@ class TradingModule:
             logger.error("Incomplete decision data received from LLM")
             return {}
 
-    def _validate_and_format_decision(self, decision: Dict[str, Any], data: pd.DataFrame) -> Optional[TradingDecision]:
+    def _validate_and_format_decision(self, decision: dict, data: pd.DataFrame) -> TradingDecision:
         if not decision:
             return None
 
@@ -86,7 +77,7 @@ class TradingModule:
             explanation=decision['explanation']
         )
 
-    def _is_valid_decision(self, decision: Dict[str, Any], current_price: float) -> bool:
+    def _is_valid_decision(self, decision: dict, current_price: float) -> bool:
         return (
             decision["signal"] in ["buy", "sell"] and
             isinstance(decision["stop_loss"], float) and
@@ -95,20 +86,3 @@ class TradingModule:
             (decision["signal"] == "buy" and decision["stop_loss"] < current_price < decision["take_profit"] or
              decision["signal"] == "sell" and decision["take_profit"] < current_price < decision["stop_loss"])
         )
-
-class RiskManager:
-    def __init__(self, max_risk_per_trade: float = CONFIG['MAX_RISK_PER_TRADE']):
-        self.max_risk_per_trade = max_risk_per_trade
-
-    def calculate_position_size(self, account_balance: float, risk_amount: float, stop_loss_pips: float) -> float:
-        max_risk_amount = account_balance * self.max_risk_per_trade
-        risk_amount = min(risk_amount, max_risk_amount)
-        position_size = risk_amount / stop_loss_pips
-        return round(position_size, 4)
-
-    def adjust_stop_loss(self, entry_price: float, stop_loss: float, take_profit: float) -> float:
-        risk = abs(entry_price - stop_loss)
-        reward = abs(take_profit - entry_price)
-        if reward / risk < 2:
-            return entry_price - (take_profit - entry_price) / 2
-        return stop_loss

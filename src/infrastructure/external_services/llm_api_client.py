@@ -1,9 +1,8 @@
 import requests
 import logging
-from typing import List, Dict, Generator
-from config import CONFIG
+from typing import List, Dict
+from config.settings import CONFIG
 from openai import OpenAI
-
 
 logger = logging.getLogger(__name__)
 
