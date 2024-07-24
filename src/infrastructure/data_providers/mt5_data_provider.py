@@ -3,7 +3,8 @@ import pandas as pd
 import time
 import logging
 from datetime import datetime
-from config import CONFIG, Timeframe
+from config.settings import CONFIG
+from domain.value_objects.timeframe import Timeframe
 
 logger = logging.getLogger(__name__)
 
@@ -50,42 +51,6 @@ class DataFetcher:
                 raise Exception("Failed to fetch rates after multiple attempts")
 
             return self._add_technical_indicators(all_data)
-
-    def _add_technical_indicators(self, data: pd.DataFrame) -> pd.DataFrame:
-        # SMA and EMA
-        data['SMA_20'] = data['close'].rolling(window=20, min_periods=1).mean()
-        data['EMA_50'] = data['close'].ewm(span=50, adjust=False, min_periods=1).mean()
-
-        # RSI
-        delta = data['close'].diff()
-        gain = delta.where(delta > 0, 0).rolling(window=14, min_periods=1).mean()
-        loss = -delta.where(delta < 0, 0).rolling(window=14, min_periods=1).mean()
-        rs = gain / loss
-        data['RSI'] = 100 - (100 / (1 + rs))
-
-        # MACD
-        exp1 = data['close'].ewm(span=12, adjust=False, min_periods=1).mean()
-        exp2 = data['close'].ewm(span=26, adjust=False, min_periods=1).mean()
-        data['MACD'] = exp1 - exp2
-        data['Signal_Line'] = data['MACD'].ewm(span=9, adjust=False, min_periods=1).mean()
-
-        # Bollinger Bands
-        data['BB_Middle'] = data['close'].rolling(window=20, min_periods=1).mean()
-        data['BB_Upper'] = data['BB_Middle'] + (data['close'].rolling(window=20, min_periods=1).std() * 2)
-        data['BB_Lower'] = data['BB_Middle'] - (data['close'].rolling(window=20, min_periods=1).std() * 2)
-
-        # Stochastic Oscillator
-        low_14 = data['low'].rolling(window=14, min_periods=1).min()
-        high_14 = data['high'].rolling(window=14, min_periods=1).max()
-        data['%K'] = (data['close'] - low_14) * 100 / (high_14 - low_14)
-        data['%D'] = data['%K'].rolling(window=3, min_periods=1).mean()
-
-        # Fill NaN values
-        data = data.fillna(method='bfill')  # Backfill
-        data = data.fillna(method='ffill')  # Forward fill any remaining NaNs
-
-        return data
-
 
     def fetch_latest_data(self, num_candles: int = 50) -> pd.DataFrame:
         self.ensure_mt5_connection()
@@ -134,3 +99,38 @@ class DataFetcher:
             time.sleep(CONFIG['RETRY_DELAY'])
 
         raise Exception(f"Failed to fetch latest tick after {CONFIG['MAX_RETRIES']} attempts")
+
+    def _add_technical_indicators(self, data: pd.DataFrame) -> pd.DataFrame:
+        # SMA and EMA
+        data['SMA_20'] = data['close'].rolling(window=20, min_periods=1).mean()
+        data['EMA_50'] = data['close'].ewm(span=50, adjust=False, min_periods=1).mean()
+
+        # RSI
+        delta = data['close'].diff()
+        gain = delta.where(delta > 0, 0).rolling(window=14, min_periods=1).mean()
+        loss = -delta.where(delta < 0, 0).rolling(window=14, min_periods=1).mean()
+        rs = gain / loss
+        data['RSI'] = 100 - (100 / (1 + rs))
+
+        # MACD
+        exp1 = data['close'].ewm(span=12, adjust=False, min_periods=1).mean()
+        exp2 = data['close'].ewm(span=26, adjust=False, min_periods=1).mean()
+        data['MACD'] = exp1 - exp2
+        data['Signal_Line'] = data['MACD'].ewm(span=9, adjust=False, min_periods=1).mean()
+
+        # Bollinger Bands
+        data['BB_Middle'] = data['close'].rolling(window=20, min_periods=1).mean()
+        data['BB_Upper'] = data['BB_Middle'] + (data['close'].rolling(window=20, min_periods=1).std() * 2)
+        data['BB_Lower'] = data['BB_Middle'] - (data['close'].rolling(window=20, min_periods=1).std() * 2)
+
+        # Stochastic Oscillator
+        low_14 = data['low'].rolling(window=14, min_periods=1).min()
+        high_14 = data['high'].rolling(window=14, min_periods=1).max()
+        data['%K'] = (data['close'] - low_14) * 100 / (high_14 - low_14)
+        data['%D'] = data['%K'].rolling(window=3, min_periods=1).mean()
+
+        # Fill NaN values
+        data = data.fillna(method='bfill')  # Backfill
+        data = data.fillna(method='ffill')  # Forward fill any remaining NaNs
+
+        return data
