@@ -10,13 +10,14 @@ class TradingModule():
     def __init__(self, api_client: LLMApiClient):
         self.api_client = api_client
 
-    def generate_trading_decisions(self, data: pd.DataFrame) -> List[TradingDecision]:
+    def generate_trading_decisions(self, one_minute_data: pd.DataFrame, five_minute_data: pd.DataFrame) -> List[TradingDecision]:
         try:
-            latest_data = data.tail(50).to_dict(orient='records')
-            response = self.api_client.get_trading_decision(latest_data)
+            latest_one_minute_data = one_minute_data.tail(50).to_dict(orient='records')
+            latest_five_minute_data = five_minute_data.tail(50).to_dict(orient='records')
+            response = self.api_client.get_trading_decision(latest_one_minute_data, latest_five_minute_data)
             trading_decision = self._parse_llm_response(response)
             if trading_decision:
-                validated_decision = self._validate_and_format_decision(trading_decision, data)
+                validated_decision = self._validate_and_format_decision(trading_decision, one_minute_data)
                 return [validated_decision] if validated_decision else []
             return []
         except Exception as e:

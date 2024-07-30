@@ -13,12 +13,7 @@ logger = logging.getLogger(__name__)
 
 class TradingService:
     def __init__(self):
-        timeframe_str = CONFIG['TIMEFRAME']
-        try:
-            timeframe = Timeframe[timeframe_str]
-        except KeyError:
-            raise ValueError(f"Invalid timeframe: {timeframe_str}")
-        self.data_fetcher = DataFetcher(CONFIG['SYMBOL'], timeframe)
+        self.data_fetcher = DataFetcher(CONFIG['SYMBOL'])
         llm_api_client = LLMApiClient(CONFIG['LLM_API_URL'], CONFIG['LLM_API_KEY'])
         self.trading_module = TradingModule(llm_api_client)
         self.risk_manager = RiskManager()
@@ -26,38 +21,55 @@ class TradingService:
     def run(self):
         while True:
             try:
-                logger.info("Starting trading cycle")
                 self._trading_cycle()
-                logger.info(f"Sleeping for {CONFIG['TIMEFRAME'].value * 60} seconds until the next cycle")
-                time.sleep(CONFIG['TIMEFRAME'].value * 60)
+                logger.info(f"Sleeping for {CONFIG['CYCLE_INTERVAL'] * 60} seconds until the next cycle")
+                time.sleep(CONFIG['CYCLE_INTERVAL'] * 60)
             except Exception as e:
                 logger.error(f"An error occurred in the main loop: {e}")
                 time.sleep(60)
 
     def _trading_cycle(self):
         try:
-            # Fetch the latest data (last 50 candles)
-            latest_data = self.data_fetcher.fetch_latest_data(num_candles=50)
+            self.data_fetcher.ensure_mt5_connection()
 
-            # Fetch the current tick
-            current_tick = self.data_fetcher.fetch_current_tick()
+            account_info = mt5.account_info()
+            if account_info is None:
+                logger.error(f"Failed to get account info : {mt5.last_error()}")
+                return
 
-            # Combine the latest data with the current tick
-            all_data = pd.concat([latest_data, current_tick.to_frame().T]).reset_index(drop=True)
+            open_positions = mt5.positions_get(symbol=CONFIG['SYMBOL'])
+            if open_positions is None:
+                logger.error(f"Failed to get open positions for {CONFIG['SYMBOL']}  error : {mt5.last_error()}")
+                return
+
+            # Fetch the latest 1-minute and 5-minute data (last 50 candles each)
+            latest_1m_data = self.data_fetcher.fetch_latest_data(timeframe=Timeframe["M1"], num_candles=50)
+            latest_5m_data = self.data_fetcher.fetch_latest_data(timeframe=Timeframe["M5"], num_candles=50)
 
             # Sort the data by time and reset the index
-            all_data = all_data.sort_values('time').reset_index(drop=True)
+            latest_1m_data = latest_1m_data.sort_values('time').reset_index(drop=True)
+            latest_5m_data = latest_5m_data.sort_values('time').reset_index(drop=True)
 
             # Calculate indicators for the combined data
-            decision_data = self.data_fetcher._add_technical_indicators(all_data)
+            one_minute_data = self.data_fetcher._add_technical_indicators(latest_1m_data)
+            five_minute_data = self.data_fetcher._add_technical_indicators(latest_5m_data)
+
+            market_data = {
+                '1m': one_minute_data,
+                '5m': five_minute_data
+            }
+
+            if not self.risk_manager.can_open_more_trades(account_info, open_positions, market_data):
+                logger.info("Skipping trading cycle due to risk management constraints")
+                return
 
             logger.info("Generating trading decisions")
-            trading_decisions = self.trading_module.generate_trading_decisions(decision_data)
-
-            self._display_real_time_decisions(trading_decisions)
+            trading_decisions = self.trading_module.generate_trading_decisions(one_minute_data, five_minute_data)
 
             for decision in trading_decisions:
-                self._execute_trade(decision)
+                if  self.risk_manager.should_execute_trade(decision, open_positions):
+                    self._display_real_time_decisions(trading_decisions)
+                    self._execute_trade(decision)
 
         except Exception as e:
             logger.error(f"An error occurred in the trading cycle: {e}")
@@ -120,6 +132,7 @@ class TradingService:
 
         result = mt5.order_send(request)
         if result.retcode != mt5.TRADE_RETCODE_DONE:
-            logger.error(f"Order failed, retcode={result.retcode}")
+            logger.error(f"Order failed, retcode={result.retcode} message : {result.comment}")
         else:
             logger.info(f"Order executed: {result.order}")
+
