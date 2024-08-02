@@ -66,7 +66,7 @@ class RiskManager():
             recent_prices = data['close'].tail(20)  # Last 20 periods
             volatility = np.std(recent_prices.pct_change())
             if volatility > volatility_thresholds[timeframe]:
-                logger.info(f"Volatility for timeframe {timeframe} ({volatility:.2f}) exceeds maximum ({volatility_thresholds[timeframe]})")
+                logger.error(f"Volatility for timeframe {timeframe} ({volatility:.2f}) exceeds maximum ({volatility_thresholds[timeframe]})")
                 return False
 
         # 5. Time-based rules

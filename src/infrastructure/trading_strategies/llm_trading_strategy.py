@@ -17,9 +17,12 @@ class TradingModule():
             response = self.api_client.get_trading_decision(latest_one_minute_data, latest_five_minute_data)
             trading_decision = self._parse_llm_response(response)
             if trading_decision:
-                validated_decision = self._validate_and_format_decision(trading_decision, one_minute_data)
-                return [validated_decision] if validated_decision else []
-            return []
+                validated_decision = self._validate_and_format_decision(trading_decision, one_minute_data, five_minute_data)
+                if validated_decision:
+                    return [validated_decision], True
+                else:
+                    return [], False
+            return [], True
         except Exception as e:
             logger.error(f"Error occurred while generating trading decisions: {e}")
             return []
@@ -53,22 +56,49 @@ class TradingModule():
             logger.error("Incomplete decision data received from LLM")
             return {}
 
-    def _validate_and_format_decision(self, decision: dict, data: pd.DataFrame) -> TradingDecision:
-        if not decision:
-            return None
+    def _validate_and_format_decision(self, decision: dict, one_minute_data: pd.DataFrame, five_minute_data: pd.DataFrame) -> TradingDecision:
+        current_price = one_minute_data['close'].iloc[-1]
+        atr = one_minute_data['ATR'].iloc[-1]
 
-        current_price = data['close'].iloc[-1]
-
+        # Validate signal
         if decision['signal'] not in ['buy', 'sell']:
-            logger.warning(f"Invalid signal: {decision['signal']}")
+            logger.warning(f"Invalid signal: {decision['signal']}. Expected 'buy' or 'sell'.")
             return None
 
-        if decision['signal'] == 'buy' and not (decision['stop_loss'] < current_price < decision['take_profit']):
-            logger.warning("Invalid buy decision: Stop Loss should be less than current price, and Take Profit should be greater")
-            return None
+        # Validate stop loss and take profit
+        if decision['signal'] == 'buy':
+            if not (decision['stop_loss'] < current_price < decision['take_profit']):
+                logger.warning(
+                    f"Invalid stop loss or take profit for buy signal: Stop Loss = {decision['stop_loss']}, "
+                    f"Current Price = {current_price}, Take Profit = {decision['take_profit']}"
+                )
+                return None
+            if (current_price - decision['stop_loss']) < atr:
+                logger.warning(
+                    f"Stop loss too close to current price for buy signal: Stop Loss = {decision['stop_loss']}, "
+                    f"Current Price = {current_price}, ATR = {atr}"
+                )
+                return None
+        elif decision['signal'] == 'sell':
+            if not (decision['take_profit'] < current_price < decision['stop_loss']):
+                logger.warning(
+                    f"Invalid stop loss or take profit for sell signal: Stop Loss = {decision['stop_loss']}, "
+                    f"Current Price = {current_price}, Take Profit = {decision['take_profit']}"
+                )
+                return None
+            if (decision['stop_loss'] - current_price) < atr:
+                logger.warning(
+                    f"Stop loss too close to current price for sell signal: Stop Loss = {decision['stop_loss']}, "
+                    f"Current Price = {current_price}, ATR = {atr}"
+                )
+                return None
 
-        if decision['signal'] == 'sell' and not (decision['take_profit'] < current_price < decision['stop_loss']):
-            logger.warning("Invalid sell decision: Take Profit should be less than current price, and Stop Loss should be greater")
+        # Check if decision aligns with overall trend
+        if not self._check_trend_alignment(decision, one_minute_data, five_minute_data):
+            logger.warning(
+                f"Decision does not align with overall trend. Signal = {decision['signal']}, "
+                f"Current Price = {current_price}, ATR = {atr}"
+            )
             return None
 
         return TradingDecision(
@@ -77,6 +107,27 @@ class TradingModule():
             take_profit=decision['take_profit'],
             explanation=decision['explanation']
         )
+
+
+    def _check_trend_alignment(self, decision: dict, one_minute_data: pd.DataFrame, five_minute_data: pd.DataFrame) -> bool:
+        one_min_trend = self._determine_trend(one_minute_data)
+        five_min_trend = self._determine_trend(five_minute_data)
+
+        if decision['signal'] == 'buy':
+            return one_min_trend == 'up' and five_min_trend in ['up', 'neutral']
+        elif decision['signal'] == 'sell':
+            return one_min_trend == 'down' and five_min_trend in ['down', 'neutral']
+
+    def _determine_trend(self, data: pd.DataFrame) -> str:
+        sma_short = data['SMA_20'].iloc[-1]
+        sma_long = data['SMA_20'].rolling(window=20).mean().iloc[-1]
+
+        if sma_short > sma_long and data['ADX'].iloc[-1] > 25:
+            return 'up'
+        elif sma_short < sma_long and data['ADX'].iloc[-1] > 25:
+            return 'down'
+        else:
+            return 'neutral'
 
     def _is_valid_decision(self, decision: dict, current_price: float) -> bool:
         return (

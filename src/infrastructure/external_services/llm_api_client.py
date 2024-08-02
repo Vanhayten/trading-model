@@ -28,40 +28,33 @@ class LLMApiClient:
 
     def _generate_prompt(self, one_minute_data: List[Dict], five_minute_data: List[Dict]) -> str:
         prompt = f"""
-            Analyze the following XAUUSD data:
+        Analyze the {CONFIG['SYMBOL']} data provided for 1-minute and 5-minute timeframes.
 
-            1-minute chart data (last 50 candles):
-            {one_minute_data}
+        1-minute chart data (last 50 candles):
+        {one_minute_data}
 
-            5-minute chart data (last 50 candles):
-            {five_minute_data}
+        5-minute chart data (last 50 candles):
+        {five_minute_data}
 
-            Each candle includes: Timestamp, Open, High, Low, Close, Volume, SMA, EMA, RSI, MACD, Bollinger Bands
+        Based on this data, provide ONE precise trading decision following these rules:
 
-            Based on this comprehensive data, generate ONE precise trading decision. Your response MUST EXACTLY follow this format:
+        1. Signal must be either 'buy' or 'sell'.
+        2. Stop Loss and Take Profit must be specific numerical values.
+        3. For 'buy': Stop Loss < current price < Take Profit
+        4. For 'sell': Take Profit < current price < Stop Loss
+        5. Stop Loss should be at least 1 ATR away from the current price.
+        6. The decision should align with the overall trend visible in both timeframes.
+        7. Consider recent price action, key technical indicators, and significant support/resistance levels.
 
-            Signal: [ONLY 'buy' or 'sell']
-            Stop Loss: [EXACT price number]
-            Take Profit: [EXACT price number]
-            Explanation: [1-2 sentences ONLY]
+        Provide your decision in this exact format:
 
-            CRITICAL RULES:
-            1. Adhere STRICTLY to the format above. No additional text allowed.
-            2. Signal MUST be either 'buy' or 'sell'. No alternatives permitted.
-            3. Stop Loss and Take Profit MUST be specific numerical values.
-            4. For 'buy': Stop Loss < current price < Take Profit
-            5. For 'sell': Take Profit < current price < Stop Loss
-            6. Explanation MUST be concise (1-2 sentences max) focusing ONLY on the primary reason for the decision.
-            7. DO NOT include any analysis, questions, or extra commentary.
-            8. If data is insufficient, respond ONLY with: "Insufficient data to make a trading decision."
+        Signal: [buy/sell]
+        Stop Loss: [exact price]
+        Take Profit: [exact price]
+        Explanation: [1-2 sentences explaining the primary reason for the decision]
 
-            IMPORTANT:
-            - Analyze both 1-minute and 5-minute timeframes for a comprehensive view.
-            - Consider recent price action, trends, and potential reversals.
-            - Pay attention to key technical indicators and their crossovers.
-            - Look for significant support/resistance levels in both timeframes.
-            - Ensure your decision aligns with the overall trend visible in the data.
+        If the data is insufficient or unclear, respond only with: "Insufficient data to make a trading decision."
 
-            Your adherence to these guidelines is crucial. Any deviation will be considered an error and may result in incorrect trading decisions.
-            """
+        Your strict adherence to these guidelines is crucial for accurate trading decisions.
+        """
         return prompt

@@ -1,4 +1,5 @@
 import MetaTrader5 as mt5
+import numpy as np
 import pandas as pd
 import time
 import logging
@@ -52,22 +53,25 @@ class DataFetcher:
 
             return self._add_technical_indicators(all_data)
 
-    def fetch_latest_data(self, timeframe: Timeframe, num_candles: int = 50 ) -> pd.DataFrame:
+    def fetch_latest_data(self, timeframe: Timeframe, num_candles: int = 50 , extra_candles: int = 100) -> pd.DataFrame:
         self.ensure_mt5_connection()
 
         for attempt in range(CONFIG['MAX_RETRIES']):
             try:
                 # Fetch the most recent completed candles
-                rates = mt5.copy_rates_from_pos(self.symbol, timeframe.value, 0, num_candles)
+                total_candles = num_candles + extra_candles
+                rates = mt5.copy_rates_from_pos(self.symbol, timeframe.value, 0, total_candles)
                 if rates is not None and len(rates) > 0:
                     df = pd.DataFrame(rates)
                     df['time'] = pd.to_datetime(df['time'], unit='s')
 
-                    print(f"Fetched data from {df['time'].min()} to {df['time'].max()}")
-                    print(f"Current time: {datetime.now()}")
-                    print(f"MetaTrader server time: {mt5.symbol_info(self.symbol).time}")
+                    print(f"1.Current time: {datetime.now()} -- 2.MetaTrader server time: {mt5.symbol_info(self.symbol).time}")
 
-                    return self._add_technical_indicators(df)
+                    # Calculate indicators using all fetched data
+                    df_with_indicators = self._add_technical_indicators(df)
+
+                    # Return only the required number of candles
+                    return df_with_indicators.tail(num_candles)
                 else:
                     print("No data received from MetaTrader 5")
             except Exception as e:
@@ -101,9 +105,15 @@ class DataFetcher:
         raise Exception(f"Failed to fetch latest tick after {CONFIG['MAX_RETRIES']} attempts")
 
     def _add_technical_indicators(self, data: pd.DataFrame) -> pd.DataFrame:
+        # Ensure data is sorted by time
+        data = data.sort_values('time')
+
+        # Calculate returns
+        data['returns'] = data['close'].pct_change()
+
         # SMA and EMA
-        data['SMA_20'] = data['close'].rolling(window=20, min_periods=1).mean()
-        data['EMA_50'] = data['close'].ewm(span=50, adjust=False, min_periods=1).mean()
+        data['SMA_20'] = data['close'].rolling(window=20).mean()
+        data['EMA_50'] = data['close'].ewm(span=50, adjust=False).mean()
 
         # RSI
         delta = data['close'].diff()
@@ -117,12 +127,14 @@ class DataFetcher:
         exp2 = data['close'].ewm(span=26, adjust=False).mean()
         data['MACD'] = exp1 - exp2
         data['Signal_Line'] = data['MACD'].ewm(span=9, adjust=False).mean()
+        data['MACD_Histogram'] = data['MACD'] - data['Signal_Line']
 
         # Bollinger Bands
         data['BB_Middle'] = data['close'].rolling(window=20).mean()
         data['BB_Std'] = data['close'].rolling(window=20).std()
         data['BB_Upper'] = data['BB_Middle'] + (data['BB_Std'] * 2)
         data['BB_Lower'] = data['BB_Middle'] - (data['BB_Std'] * 2)
+        data['BB_Width'] = (data['BB_Upper'] - data['BB_Lower']) / data['BB_Middle']
 
         # Stochastic Oscillator
         low_14 = data['low'].rolling(window=14).min()
@@ -130,7 +142,39 @@ class DataFetcher:
         data['%K'] = ((data['close'] - low_14) / (high_14 - low_14)) * 100
         data['%D'] = data['%K'].rolling(window=3).mean()
 
-        # Fill NaN values
-        data = data.fillna(method='bfill').fillna(method='ffill')
+        # ATR (Average True Range)
+        data['TR'] = np.maximum(
+            data['high'] - data['low'],
+            np.maximum(
+                abs(data['high'] - data['close'].shift()),
+                abs(data['low'] - data['close'].shift())
+            )
+        )
+        data['ATR'] = data['TR'].rolling(window=14).mean()
+
+        # ADX (Average Directional Index)
+        plus_dm = np.maximum(data['high'] - data['high'].shift(), 0)
+        minus_dm = np.maximum(data['low'].shift() - data['low'], 0)
+        plus_dm[(plus_dm < minus_dm) | (plus_dm == minus_dm)] = 0
+        minus_dm[(minus_dm < plus_dm) | (minus_dm == plus_dm)] = 0
+
+        tr = data['TR']
+        plus_di = 100 * (plus_dm.rolling(window=14).sum() / tr.rolling(window=14).sum())
+        minus_di = 100 * (minus_dm.rolling(window=14).sum() / tr.rolling(window=14).sum())
+        dx = 100 * abs(plus_di - minus_di) / (plus_di + minus_di)
+        data['ADX'] = dx.rolling(window=14).mean()
+
+        # Momentum
+        data['Momentum'] = data['close'] - data['close'].shift(4)
+
+        # Rate of Change
+        data['ROC'] = data['close'].pct_change(periods=12) * 100
+
+        # On-Balance Volume (OBV)
+        volume = data['real_volume'].where(data['real_volume'] != 0, data['tick_volume'])
+        data['OBV'] = (np.sign(data['close'].diff()) * volume).cumsum()
+
+        # Volume Rate of Change
+        data['Volume_ROC'] = volume.pct_change(periods=1) * 100
 
         return data

@@ -27,3 +27,14 @@ Ensure you have Python 3.8+ installed and have set up your configuration in `con
     ```sh
     python main.py run-backtest
     ```
+
+
+
+Bitcoin: BTCUSD
+Ethereum: ETHUSD
+Gold: XAUUSD
+S&P 500 Futures: ES
+EUR/USD: EURUSD
+Silver: XAGUSD
+GBP/USD: GBPUSD
+USD/JPY: USDJPY
