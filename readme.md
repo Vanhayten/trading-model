@@ -76,7 +76,7 @@ config/settings.py
 ```
 
 3. Use environment variables or secure secret management
-```
+
 
 ## Usage 🚀
 

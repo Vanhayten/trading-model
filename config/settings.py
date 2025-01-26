@@ -1,5 +1,9 @@
 from datetime import datetime
 import pandas as pd
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
 
 # Calculate dates
 today = datetime.now()
@@ -12,12 +16,12 @@ BACKTESTING_END_DATE = end_date.strftime('%Y-%m-%d')
 
 CONFIG = {
 
-    'MT5_LOGIN': '... Add your MetaTrader 5 Login ID ...',
-    'MT5_PASSWORD': '... Add your MetaTrader 5 Password ...',
-    'MT5_SERVER': '... Add your MetaTrader 5 Server ...',
-    'LLM_API_KEY': '... Add your OpenAI API Key ...',
+    'MT5_LOGIN': os.getenv('MT5_LOGIN'),
+    'MT5_PASSWORD': os.getenv('MT5_PASSWORD'),
+    'MT5_SERVER': os.getenv('MT5_SERVER', 'XMGlobal-MT5-7'),
+    'LLM_API_KEY': os.getenv('LLM_API_KEY'),
+    'SYMBOL': os.getenv('SYMBOL', 'BTCUSD'),
 
-    'SYMBOL': 'BTCUSD',
     'TIMEFRAME': 'M5',
     'LLM_API_URL': 'https://api.openai.com/v1/chat/completions',
     'MAX_RETRIES': 3,

@@ -123,4 +123,4 @@ target/
 .python-version
 
 # mypy
-.mypy_cache/
+.mypy_cache/.env
