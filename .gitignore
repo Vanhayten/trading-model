@@ -48,10 +48,6 @@ wheels/
 venv/
 ENV/
 
-# Local configuration
-/config/settings.py  # <--- Your credentials file
-/local_settings.py
-
 # Logs and databases
 *.log
 *.sqlite
