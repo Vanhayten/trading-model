@@ -1,2 +1,130 @@
-__pycache__
-src/trading_model.egg-info
+# Python
+__pycache__/
+*.py[cod]
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+*.manifest
+*.spec
+
+# IDE & Editors
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+.ropeproject
+*.code-workspace
+*.sublime-project
+*.sublime-workspace
+
+# Environment files
+.env
+.env.local
+.env.development
+.env.test
+.env.production
+.local.env
+.envrc
+
+# Virtual environment
+.venv/
+venv/
+ENV/
+
+# Local configuration
+/config/settings.py  # <--- Your credentials file
+/local_settings.py
+
+# Logs and databases
+*.log
+*.sqlite
+*.db
+*.dump
+
+# OS generated
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+Desktop.ini
+
+# Testing
+.coverage
+htmlcov/
+.pytest_cache/
+.mypy_cache/
+
+# Jupyter
+.ipynb_checkpoints
+
+# Security
+secrets.txt
+credentials.json
+*.key
+*.pem
+*.cert
+*.pub
+
+# Package manager specific
+pip-delete-this-directory.txt
+pip-log.txt
+
+# Project specific
+/venv/
+/ENV/
+.env/
+*.bak
+*.tmp
+
+# Windows
+[Tt]humbs.db
+[Dd]esktop.ini
+$RECYCLE.BIN/
+
+# Spyder
+.spyderproject
+.spyproject
+
+# PyCharm
+.idea
+.idea_modules/
+
+# Visual Studio Code
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+
+# Virtual environment
+venv/
+ENV/
+
+# PyBuilder
+target/
+
+# pyenv
+.python-version
+
+# mypy
+.mypy_cache/
