@@ -1,8 +1,8 @@
 from typing import List
 import pandas as pd
 import logging
-from domain.entities.trading_decision import TradingDecision
-from infrastructure.external_services.llm_api_client import LLMApiClient
+from src.domain.entities.trading_decision import TradingDecision
+from src.infrastructure.external_services.llm_api_client import LLMApiClient
 
 logger = logging.getLogger(__name__)
 

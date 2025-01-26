@@ -1,10 +1,10 @@
 import pandas as pd
 import numpy as np
 from datetime import datetime
-from infrastructure.data_providers.mt5_data_provider import DataFetcher
-from infrastructure.trading_strategies.llm_trading_strategy import TradingModule
-from infrastructure.risk_managers.basic_risk_manager import RiskManager
-from infrastructure.external_services.llm_api_client import LLMApiClient
+from src.infrastructure.data_providers.mt5_data_provider import DataFetcher
+from src.infrastructure.trading_strategies.llm_trading_strategy import TradingModule
+from src.infrastructure.risk_managers.basic_risk_manager import RiskManager
+from src.infrastructure.external_services.llm_api_client import LLMApiClient
 from config.settings import CONFIG
 import logging
 

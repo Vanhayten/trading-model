@@ -5,7 +5,7 @@ import time
 import logging
 from datetime import datetime
 from config.settings import CONFIG
-from domain.value_objects.timeframe import Timeframe
+from src.domain.value_objects.timeframe import Timeframe
 
 
 logger = logging.getLogger(__name__)

@@ -1,6 +1,6 @@
 import click
-from application.trading_service import TradingService
-from application.backtesting_service import BacktestingService
+from src.application.trading_service import TradingService
+from src.application.backtesting_service import BacktestingService
 
 @click.group()
 def cli():

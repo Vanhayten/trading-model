@@ -3,12 +3,12 @@ import sys
 import time
 import datetime
 import logging
-from infrastructure.data_providers.mt5_data_provider import DataFetcher
-from infrastructure.trading_strategies.llm_trading_strategy import TradingModule
-from infrastructure.risk_managers.basic_risk_manager import RiskManager
-from infrastructure.external_services.llm_api_client import LLMApiClient
+from src.infrastructure.data_providers.mt5_data_provider import DataFetcher
+from src.infrastructure.trading_strategies.llm_trading_strategy import TradingModule
+from src.infrastructure.risk_managers.basic_risk_manager import RiskManager
+from src.infrastructure.external_services.llm_api_client import LLMApiClient
 from config.settings import CONFIG
-from domain.value_objects.timeframe import Timeframe
+from src.domain.value_objects.timeframe import Timeframe
 
 logger = logging.getLogger(__name__)
 
